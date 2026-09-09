@@ -1,24 +1,45 @@
 #!/usr/bin/env python3
 """Text-only console UI. It knows providers only through their manifests."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
 import logging
 import os
 import select
 import sys
 import termios
+import time
 import tty
 from pathlib import Path
 from .config import load
-from .display import Display
+from .display import Display, restore_console
 from .input import DancePad, PAD_ACTIONS
 from .hooks import notify
 from .manifests import collect
 from .process import run
-from .display import restore_console
 from . import smoke
 
 LOG = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
+SPLASH_SECONDS = 4.0
+SPLASH_ART = (
+    "                                                                       ▄█╗",
+    "                                                                       ╚═╝",
+    "██╗  ██╗ ██████╗  ██████╗██╗  ██╗ ██████╗ ██╗   ██╗ █████╗ ███╗   ██╗███████╗",
+    "██║ ██╔╝██╔═══██╗██╔════╝██║ ██╔╝██╔═══██╗██║   ██║██╔══██╗████╗  ██║██╔════╝",
+    "█████╔╝ ██║   ██║██║     █████╔╝ ██║   ██║██║   ██║███████║██╔██╗ ██║█████╗  ",
+    "██╔═██╗ ██║   ██║██║     ██╔═██╗ ██║   ██║╚██╗ ██╔╝██╔══██║██║╚██╗██║██╔══╝  ",
+    "██║  ██╗╚██████╔╝╚██████╗██║  ██╗╚██████╔╝ ╚████╔╝ ██║  ██║██║ ╚████║███████╗",
+    "╚═╝  ╚═╝ ╚═════╝  ╚═════╝╚═╝  ╚═╝ ╚═════╝   ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═══╝╚══════╝",
+    "",
+    "",
+    "██╗  ██╗██████╗ ██╗   ██╗",
+    "██║  ██║██╔══██╗╚██╗ ██╔╝",
+    "███████║██████╔╝ ╚████╔╝ ",
+    "██╔══██║██╔══██╗  ╚██╔╝  ",
+    "██║  ██║██║  ██║   ██║   ",
+    "╚═╝  ╚═╝╚═╝  ╚═╝   ╚═╝   ",
+)
+SPLASH_COLORS = ("\x1b[91m", "\x1b[93m", "\x1b[92m", "\x1b[96m", "\x1b[94m", "\x1b[95m")
 
 class Terminal:
     def __enter__(self):
@@ -47,6 +68,21 @@ class Terminal:
             tone = color if selected else "\x1b[2;37m" if dim else "\x1b[37m"
             out.append(tone + " " * max(0, (size.columns-len(text)-len(prefix)-len(suffix)) // 2) + prefix + text + suffix + "\x1b[0m\r\n")
         sys.stdout.write("".join(out)); sys.stdout.flush()
+    def splash(self, seconds=SPLASH_SECONDS):
+        size = os.get_terminal_size(sys.stdout.fileno())
+        lines = SPLASH_ART if size.columns >= 80 else ("KOCKOVANÉ HRY",)
+        out = ["\x1b[2J\x1b[H", "\r\n" * max(0, (size.lines - len(lines)) // 2)]
+        for row, text in enumerate(lines):
+            if not text:
+                out.append("\r\n")
+                continue
+            left = " " * max(0, (size.columns - len(text)) // 2)
+            rainbow = "".join(SPLASH_COLORS[((index + row * 4) * len(SPLASH_COLORS) // max(1, size.columns)) % len(SPLASH_COLORS)] + character for index, character in enumerate(text))
+            out.append(left + rainbow + "\x1b[0m\r\n")
+        sys.stdout.write("".join(out)); sys.stdout.flush()
+        deadline = time.monotonic() + seconds
+        while time.monotonic() < deadline:
+            self.key(min(.1, deadline - time.monotonic()))
 
 def next_input(term, pad):
     key = term.key()
@@ -87,8 +123,12 @@ def main(argv=None):
         notify(settings.providers, "input-added" if previous_pad else "input-removed")
         notify(settings.providers, "display-on" if previous_display else "display-off")
         try:
+            # Providers can answer while the boot splash holds the screen.
+            with ThreadPoolExecutor(max_workers=1) as executor:
+                initial_catalog = executor.submit(collect, settings.providers)
+                terminal.splash()
+                games, problems = initial_catalog.result()
             while True:
-                games, problems = collect(settings.providers)
                 entries = [("game", game.title, game) for game in games]
                 entries += [("video", "Test obrazu framebufferu", smoke.framebuffer), ("audio", "Test HDMI zvuku", smoke.audio), ("shutdown", "Koniec", None)]
                 selected %= len(entries)
@@ -130,6 +170,7 @@ def main(argv=None):
                             LOG.warning("guest %s exited with status %d", game.key, code)
                         redraw = True
                         break # Refresh all provider manifests after every guest.
+                games, problems = collect(settings.providers)
         finally: pad.close()
 
 if __name__ == "__main__": raise SystemExit(main())

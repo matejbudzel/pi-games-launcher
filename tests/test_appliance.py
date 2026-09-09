@@ -20,3 +20,10 @@ class ApplianceTests(unittest.TestCase):
         source = (ROOT / "launcher" / "main.py").read_text()
         for item in ("Test obrazu framebufferu", "Test HDMI zvuku", '"Koniec"', 'key == "CTRL_C"'):
             self.assertIn(item, source)
+
+    def test_startup_splash_and_provider_warmup_are_present(self):
+        source = (ROOT / "launcher" / "main.py").read_text()
+        self.assertIn("KOCKOVANÉ HRY", source)
+        self.assertIn("SPLASH_SECONDS = 4.0", source)
+        self.assertIn("initial_catalog = executor.submit(collect, settings.providers)", source)
+        self.assertLess(source.index("initial_catalog = executor.submit"), source.index("terminal.splash()"))
