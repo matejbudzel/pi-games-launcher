@@ -1,0 +1,13 @@
+[launcher]
+# tty=/dev/tty1
+# display_cec=0
+confirm_key=SPACE
+up_key=UP
+down_key=DOWN
+
+# Commands use shell-style quoting but are executed directly, without a shell.
+[provider dos]
+manifest_command=pi-286-games manifest
+# Optional best-effort notifications.  The launcher sets PI_GAMES_EVENT but
+# does not require these hooks or act on their exit status.
+# hook_input_added=/path/to/provider hook input-added

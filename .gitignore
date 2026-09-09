@@ -1,0 +1,5 @@
+config/launcher.conf
+.cache/
+dist/
+__pycache__/
+*.pyc

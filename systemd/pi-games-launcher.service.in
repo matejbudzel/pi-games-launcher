@@ -1,0 +1,22 @@
+[Unit]
+Description=pi-games-launcher on tty1
+After=systemd-user-sessions.service
+Conflicts=getty@tty1.service
+Before=getty@tty1.service
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@REPO@
+Environment=HOME=@HOME@
+Environment=TERM=linux
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+ExecStart=/usr/bin/python3 -m launcher.main --config @REPO@/config/launcher.conf
+Restart=on-failure
+RestartSec=2
+[Install]
+WantedBy=multi-user.target
