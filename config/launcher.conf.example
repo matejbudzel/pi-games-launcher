@@ -1,6 +1,10 @@
 [launcher]
-# tty=/dev/tty1
-# display_cec=0
+# Proven Pi 1 HDMI/fbcon profile used by the appliance.
+framebuffer_width=1280
+framebuffer_height=720
+framebuffer_depth=16
+framebuffer_hdmi_group=1
+framebuffer_hdmi_mode=4
 confirm_key=SPACE
 up_key=UP
 down_key=DOWN

@@ -7,6 +7,8 @@ width=$(setting framebuffer_width); width=${width:-640}; height=$(setting frameb
 boot=/boot/config.txt
 [ -f /boot/firmware/config.txt ] && boot=/boot/firmware/config.txt
 [ -f "$boot" ] || { echo "No Raspberry Pi config.txt found." >&2; exit 0; }
+# The old owner appended its block at EOF too; remove either ownership block.
+sed -i '/# pi-286-games legacy framebuffer/,$d' "$boot"
 sed -i '/# pi-games-launcher legacy framebuffer/,$d' "$boot"
 {
     echo '# pi-games-launcher legacy framebuffer'
