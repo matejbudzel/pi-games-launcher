@@ -24,7 +24,7 @@ def framebuffer():
 
 def audio():
     """Play a short ALSA sine tone through the configured HDMI default."""
-    result = subprocess.run(["speaker-test", "-t", "sine", "-f", "440", "-l", "1"], stderr=subprocess.PIPE, text=True)
+    result = subprocess.run(["speaker-test", "-t", "sine", "-f", "440", "-c", "2", "-l", "1"], stderr=subprocess.PIPE, text=True)
     if result.returncode:
         raise RuntimeError(result.stderr.strip() or "speaker-test zlyhal")
     print("HDMI zvukový test bol prehratý.")
