@@ -8,6 +8,8 @@ framebuffer_hdmi_mode=4
 confirm_key=SPACE
 up_key=UP
 down_key=DOWN
+# LEFT/RIGHT changes the HDMI PCM volume in 10% steps and persists it here.
+audio_volume_percent=96
 
 # Commands use shell-style quoting but are executed directly, without a shell.
 [provider dos]

@@ -2,16 +2,19 @@
 """Text-only console UI. It knows providers only through their manifests."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
+import fcntl
 import logging
 import os
 import select
+import socket
+import struct
 import subprocess
 import sys
 import termios
 import time
 import tty
 from pathlib import Path
-from .config import load
+from .config import load, save_launcher_value
 from .display import Display, restore_console
 from .input import DancePad, PAD_ACTIONS
 from .hooks import notify
@@ -48,6 +51,44 @@ MAINTENANCE_EXIT = 42
 def highlight_color(name):
     return HIGHLIGHT_COLORS[sum((index + 1) * ord(letter) for index, letter in enumerate(name)) % len(HIGHLIGHT_COLORS)]
 
+
+def hdmi_card_index(cards_path="/proc/asound/cards"):
+    try:
+        for line in Path(cards_path).read_text().splitlines():
+            if "bcm2835 HDMI" in line:
+                return line.split("[", 1)[0].strip()
+    except OSError:
+        pass
+    return "0"
+
+
+def set_audio_volume(percent):
+    try:
+        return subprocess.run(["amixer", "-c", hdmi_card_index(), "sset", "PCM", "%d%%" % percent],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0
+    except OSError:
+        return False
+
+
+def volume_status(percent):
+    filled = max(0, min(10, (percent + 5) // 10))
+    return "Zvuk: [%s%s] %d%%" % ("#" * filled, "." * (10 - filled), percent)
+
+
+def network_address():
+    """Return the first usable Ethernet/Wi-Fi IPv4 address without a shell tool."""
+    names = sorted(socket.if_nameindex(), key=lambda item: (not item[1].startswith(("eth", "en")), item[1]))
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+        for _, name in names:
+            if not name.startswith(("eth", "en", "wlan", "wl")):
+                continue
+            try:
+                reply = fcntl.ioctl(probe.fileno(), 0x8915, struct.pack("256s", name.encode()[:15]))
+                return socket.inet_ntoa(reply[20:24])
+            except OSError:
+                pass
+    return "offline"
+
 class Terminal:
     def __enter__(self):
         self.fd = sys.stdin.fileno()
@@ -63,8 +104,8 @@ class Terminal:
     def key(self, timeout=.1):
         if not select.select([self.fd], [], [], timeout)[0]: return None
         data = os.read(self.fd, 8)
-        return {b"\x03":"CTRL_C", b"\x1b":"ESC", b"\x1b[A":"UP", b"\x1bOA":"UP", b"\x1b[B":"DOWN", b"\x1bOB":"DOWN", b" ":"SPACE", b"\r":"ENTER"}.get(data, data.decode("utf-8", "ignore").upper())
-    def draw(self, lines):
+        return {b"\x03":"CTRL_C", b"\x1b":"ESC", b"\x1b[A":"UP", b"\x1bOA":"UP", b"\x1b[B":"DOWN", b"\x1bOB":"DOWN", b"\x1b[C":"RIGHT", b"\x1bOC":"RIGHT", b"\x1b[D":"LEFT", b"\x1bOD":"LEFT", b"\x1bOP":"F1", b" ":"SPACE", b"\r":"ENTER"}.get(data, data.decode("utf-8", "ignore").upper())
+    def draw(self, lines, top_corner="", bottom_corner=""):
         size = os.get_terminal_size(sys.stdout.fileno())
         out = ["\x1b[2J\x1b[H", "\r\n" * max(0, (size.lines - len(lines)) // 2)]
         for line in lines:
@@ -74,6 +115,10 @@ class Terminal:
             text = text[:max(0, size.columns - len(prefix) - len(suffix))]
             tone = highlight_color(text) if selected else "\x1b[2;37m" if dim else "\x1b[37m"
             out.append(tone + " " * max(0, (size.columns-len(text)-len(prefix)-len(suffix)) // 2) + prefix + text + suffix + "\x1b[0m\r\n")
+        if top_corner:
+            out.append("\x1b[1;%dH\x1b[2;37m%s\x1b[0m" % (max(1, size.columns - len(top_corner) + 1), top_corner[:size.columns]))
+        if bottom_corner:
+            out.append("\x1b[%d;%dH\x1b[2;37m%s\x1b[0m" % (size.lines, max(1, size.columns - len(bottom_corner) + 1), bottom_corner[:size.columns]))
         sys.stdout.write("".join(out)); sys.stdout.flush()
     def splash(self, seconds=SPLASH_SECONDS):
         size = os.get_terminal_size(sys.stdout.fileno())
@@ -161,11 +206,15 @@ def main(argv=None):
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO), format="%(levelname)s: %(message)s")
     selected = 0
     redraw = True
+    network = ""
     display = Display()
     with Terminal() as terminal:
         settings = wait_for_config(terminal, args.config)
         if settings is None:
             return MAINTENANCE_EXIT
+        volume = settings.audio_volume_percent
+        if not set_audio_volume(volume):
+            LOG.warning("could not set HDMI PCM volume")
         pad = DancePad().open()
         previous_pad, previous_display = pad.available, display.available()
         notify(settings.providers, "input-added" if previous_pad else "input-removed")
@@ -193,7 +242,7 @@ def main(argv=None):
                         if not games:
                             lines.insert(0, ("Žiadne hry nie sú dostupné", False, True))
                         lines += [("", False), ("SPACE / START - vybrať" + suffix, False)]
-                        terminal.draw(lines)
+                        terminal.draw(lines, volume_status(volume), network)
                         redraw = False
                     key = next_input(terminal, pad)
                     now_pad, now_display = pad.available, display.available()
@@ -203,7 +252,14 @@ def main(argv=None):
                         notify(settings.providers, "display-on" if now_display else "display-off"); previous_display = now_display; redraw = True
                     if key is None: continue
                     if key == "CTRL_C": return MAINTENANCE_EXIT
-                    if key == settings.up_key: selected = (selected - 1) % len(entries); redraw = True
+                    if key == "F1": network = network_address(); redraw = True
+                    elif key in ("LEFT", "RIGHT"):
+                        changed = max(0, min(100, volume + (10 if key == "RIGHT" else -10)))
+                        if changed != volume and set_audio_volume(changed):
+                            volume = changed
+                            save_launcher_value(args.config, "audio_volume_percent", volume)
+                            redraw = True
+                    elif key == settings.up_key: selected = (selected - 1) % len(entries); redraw = True
                     elif key == settings.down_key: selected = (selected + 1) % len(entries); redraw = True
                     elif key in (settings.confirm_key, "START", "ENTER"):
                         kind, _, value = entries[selected]

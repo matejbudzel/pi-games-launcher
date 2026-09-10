@@ -20,6 +20,7 @@ class Settings:
     confirm_key: str = "SPACE"
     up_key: str = "UP"
     down_key: str = "DOWN"
+    audio_volume_percent: int = 96
 
 
 def _command(value, section, key):
@@ -55,7 +56,28 @@ def load(path):
     if len({item.id for item in providers}) != len(providers):
         raise ValueError("provider IDs must be unique")
     general = parser["launcher"] if parser.has_section("launcher") else {}
+    try:
+        volume = max(0, min(100, int(general.get("audio_volume_percent", "96"))))
+    except ValueError:
+        volume = 96
     return Settings(tuple(providers), general.get("tty", "/dev/tty1"),
                     general.get("display_cec", "0").lower() in ("1", "true", "yes"),
                     general.get("confirm_key", "SPACE").upper(), general.get("up_key", "UP").upper(),
-                    general.get("down_key", "DOWN").upper())
+                    general.get("down_key", "DOWN").upper(), volume)
+
+
+def save_launcher_value(path, key, value):
+    """Update one [launcher] value without rewriting user comments or providers."""
+    lines = path.read_text(encoding="utf-8").splitlines() if path.exists() else ["[launcher]"]
+    start = next((index for index, line in enumerate(lines) if line.strip().lower() == "[launcher]"), None)
+    if start is None:
+        lines = ["[launcher]", "%s=%s" % (key, value), ""] + lines
+    else:
+        end = next((index for index in range(start + 1, len(lines)) if lines[index].strip().startswith("[")), len(lines))
+        for index in range(start + 1, end):
+            if lines[index].strip().startswith(key + "="):
+                lines[index] = "%s=%s" % (key, value)
+                break
+        else:
+            lines.insert(end, "%s=%s" % (key, value))
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")

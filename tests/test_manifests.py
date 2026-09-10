@@ -1,7 +1,7 @@
 import json
 import unittest
 from unittest.mock import patch
-from launcher.config import Provider, load
+from launcher.config import Provider, load, save_launcher_value
 from launcher.manifests import collect, parse
 
 class ManifestTests(unittest.TestCase):
@@ -31,3 +31,11 @@ class ConfigTests(unittest.TestCase):
         with NamedTemporaryFile("w") as file:
             file.write("[launcher\nconfirm_key=SPACE\n"); file.flush()
             with self.assertRaises(ValueError): load(file.name)
+    def test_volume_persists_in_launcher_section(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "launcher.conf"
+            path.write_text("[launcher]\nconfirm_key=SPACE\n\n[provider test]\nmanifest_command=test\n")
+            save_launcher_value(path, "audio_volume_percent", 70)
+            self.assertEqual(load(path).audio_volume_percent, 70)
