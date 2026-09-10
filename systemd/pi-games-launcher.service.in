@@ -18,5 +18,8 @@ TTYVHangup=yes
 ExecStart=/usr/bin/python3 -m launcher.main --config @REPO@/config/launcher.conf
 Restart=on-failure
 RestartSec=2
+SuccessExitStatus=42
+# Only Ctrl-C's maintenance exit releases tty1 to its normal login getty.
+ExecStopPost=/bin/sh -c '[ "$EXIT_STATUS" = 42 ] && /usr/bin/systemctl start getty@tty1.service || true'
 [Install]
 WantedBy=multi-user.target

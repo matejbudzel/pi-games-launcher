@@ -42,6 +42,7 @@ SPLASH_ART = (
 )
 SPLASH_COLORS = ("\x1b[91m", "\x1b[93m", "\x1b[92m", "\x1b[96m", "\x1b[94m", "\x1b[95m")
 HIGHLIGHT_COLORS = ("\x1b[91m", "\x1b[92m", "\x1b[93m", "\x1b[94m", "\x1b[95m", "\x1b[96m")
+MAINTENANCE_EXIT = 42
 
 
 def highlight_color(name):
@@ -164,7 +165,7 @@ def main(argv=None):
     with Terminal() as terminal:
         settings = wait_for_config(terminal, args.config)
         if settings is None:
-            return 0
+            return MAINTENANCE_EXIT
         pad = DancePad().open()
         previous_pad, previous_display = pad.available, display.available()
         notify(settings.providers, "input-added" if previous_pad else "input-removed")
@@ -201,7 +202,7 @@ def main(argv=None):
                     if now_display != previous_display:
                         notify(settings.providers, "display-on" if now_display else "display-off"); previous_display = now_display; redraw = True
                     if key is None: continue
-                    if key == "CTRL_C": return 0
+                    if key == "CTRL_C": return MAINTENANCE_EXIT
                     if key == settings.up_key: selected = (selected - 1) % len(entries); redraw = True
                     elif key == settings.down_key: selected = (selected + 1) % len(entries); redraw = True
                     elif key in (settings.confirm_key, "START", "ENTER"):
@@ -209,7 +210,7 @@ def main(argv=None):
                         if kind == "shutdown":
                             confirmed = confirm_shutdown(terminal, pad, settings.confirm_key)
                             if confirmed is None:
-                                return 0
+                                return MAINTENANCE_EXIT
                             if not confirmed:
                                 redraw = True
                                 continue
