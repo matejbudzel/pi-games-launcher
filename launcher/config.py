@@ -1,5 +1,5 @@
 """INI configuration for the appliance; compatible with older Python versions."""
-from configparser import ConfigParser
+from configparser import ConfigParser, Error as ConfigError
 from dataclasses import dataclass, field
 from pathlib import Path
 import shlex
@@ -34,7 +34,11 @@ def _command(value, section, key):
 
 def load(path):
     parser = ConfigParser(interpolation=None)
-    if not parser.read(str(path), encoding="utf-8"):
+    try:
+        loaded = parser.read(str(path), encoding="utf-8")
+    except (ConfigError, OSError, UnicodeError) as exc:
+        raise ValueError("configuration cannot be read: %s" % exc) from exc
+    if not loaded:
         raise ValueError("configuration file is missing: %s" % path)
     providers = []
     for section in parser.sections():

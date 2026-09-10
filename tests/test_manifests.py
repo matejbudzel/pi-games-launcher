@@ -26,3 +26,8 @@ class ConfigTests(unittest.TestCase):
             file.write("[provider one]\nmanifest_command=one manifest\n[provider two]\nmanifest_command=two manifest\n"); file.flush()
             settings = load(file.name)
         self.assertEqual([item.id for item in settings.providers], ["one", "two"])
+    def test_invalid_ini_becomes_a_configuration_error(self):
+        from tempfile import NamedTemporaryFile
+        with NamedTemporaryFile("w") as file:
+            file.write("[launcher\nconfirm_key=SPACE\n"); file.flush()
+            with self.assertRaises(ValueError): load(file.name)
