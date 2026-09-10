@@ -39,6 +39,7 @@ class ApplianceTests(unittest.TestCase):
         service = (ROOT / "systemd" / "pi-games-launcher.service.in").read_text()
         self.assertIn("MAINTENANCE_EXIT = 42", source)
         self.assertIn("SuccessExitStatus=42", service)
+        self.assertIn("ExecStopPost=+/bin/sh", service)
         self.assertIn("systemctl start getty@tty1.service", service)
 
     def test_startup_splash_and_provider_warmup_are_present(self):
