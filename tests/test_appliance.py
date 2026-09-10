@@ -40,7 +40,7 @@ class ApplianceTests(unittest.TestCase):
         self.assertIn("MAINTENANCE_EXIT = 42", source)
         self.assertIn("SuccessExitStatus=42", service)
         self.assertIn("ExecStopPost=+/bin/sh", service)
-        self.assertIn("systemctl start getty@tty1.service", service)
+        self.assertIn("systemctl --no-block start getty@tty1.service", service)
 
     def test_startup_splash_and_provider_warmup_are_present(self):
         source = (ROOT / "launcher" / "main.py").read_text()
