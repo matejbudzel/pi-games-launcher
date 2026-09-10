@@ -16,6 +16,11 @@ class ApplianceTests(unittest.TestCase):
         for setting in ("quiet", "logo.nologo", "loglevel=3", "panic=10"):
             self.assertIn(setting, source)
 
+    def test_audio_configuration_quotes_the_named_alsa_card(self):
+        source = (ROOT / "scripts" / "configure-appliance-audio.sh").read_text()
+        self.assertIn('defaults.pcm.card "snd_bcm2835"', source)
+        self.assertIn('defaults.ctl.card "snd_bcm2835"', source)
+
     def test_menu_has_diagnostics_shutdown_and_ctrl_c_escape(self):
         source = (ROOT / "launcher" / "main.py").read_text()
         for item in ("Test obrazu framebufferu", "Test HDMI zvuku", '"Koniec"', 'key == "CTRL_C"', "confirm_shutdown"):
