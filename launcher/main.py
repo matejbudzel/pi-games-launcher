@@ -198,6 +198,12 @@ def confirm_shutdown(terminal, pad, confirm_key):
         if key in ("ESC", "SELECT"):
             return False
 
+
+def entry_key(kind, value):
+    """Return a stable menu identifier that survives manifest refreshes."""
+    return value.key if kind in ("game", "testing") else kind
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=ROOT / "config" / "launcher.conf")
@@ -205,6 +211,8 @@ def main(argv=None):
     args = parser.parse_args(argv)
     logging.basicConfig(level=getattr(logging, args.log_level.upper(), logging.INFO), format="%(levelname)s: %(message)s")
     selected = 0
+    selected_key = ""
+    saved_selected_key = ""
     redraw = True
     network = ""
     display = Display()
@@ -212,6 +220,8 @@ def main(argv=None):
         settings = wait_for_config(terminal, args.config)
         if settings is None:
             return MAINTENANCE_EXIT
+        selected_key = settings.last_selected_item
+        saved_selected_key = selected_key
         volume = settings.audio_volume_percent
         if not set_audio_volume(volume):
             LOG.warning("could not set HDMI PCM volume")
@@ -231,7 +241,12 @@ def main(argv=None):
                 entries = [("game", game.title, game) for game in regular_games]
                 entries += [("testing", game.title, game) for game in testing_games]
                 entries += [("video", "Test obrazu framebufferu", smoke.framebuffer), ("audio", "Test HDMI zvuku", smoke.audio), ("shutdown", "Koniec", None)]
-                selected %= len(entries)
+                selected = next((index for index, (kind, _, value) in enumerate(entries)
+                                 if entry_key(kind, value) == selected_key), 0)
+                selected_key = entry_key(entries[selected][0], entries[selected][2])
+                if selected_key != saved_selected_key:
+                    save_launcher_value(args.config, "last_selected_item", selected_key)
+                    saved_selected_key = selected_key
                 while True:
                     if redraw:
                         suffix = " (displej nie je dostupný)" if not display.available() else ""
@@ -262,8 +277,13 @@ def main(argv=None):
                             volume = changed
                             save_launcher_value(args.config, "audio_volume_percent", volume)
                             redraw = True
-                    elif key == settings.up_key: selected = (selected - 1) % len(entries); redraw = True
-                    elif key == settings.down_key: selected = (selected + 1) % len(entries); redraw = True
+                    elif key in (settings.up_key, settings.down_key):
+                        selected = (selected + (-1 if key == settings.up_key else 1)) % len(entries)
+                        selected_key = entry_key(entries[selected][0], entries[selected][2])
+                        if selected_key != saved_selected_key:
+                            save_launcher_value(args.config, "last_selected_item", selected_key)
+                            saved_selected_key = selected_key
+                        redraw = True
                     elif key in (settings.confirm_key, "START", "ENTER"):
                         kind, _, value = entries[selected]
                         if kind == "shutdown":

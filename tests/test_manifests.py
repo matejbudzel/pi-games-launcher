@@ -44,3 +44,11 @@ class ConfigTests(unittest.TestCase):
             path.write_text("[launcher]\nconfirm_key=SPACE\n\n[provider test]\nmanifest_command=test\n")
             save_launcher_value(path, "audio_volume_percent", 70)
             self.assertEqual(load(path).audio_volume_percent, 70)
+    def test_last_selected_item_persists_in_launcher_section(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "launcher.conf"
+            path.write_text("[launcher]\n\n[provider test]\nmanifest_command=test\n")
+            save_launcher_value(path, "last_selected_item", "dos:prince-of-persia")
+            self.assertEqual(load(path).last_selected_item, "dos:prince-of-persia")

@@ -21,6 +21,7 @@ class Settings:
     up_key: str = "UP"
     down_key: str = "DOWN"
     audio_volume_percent: int = 96
+    last_selected_item: str = ""
 
 
 def _command(value, section, key):
@@ -63,7 +64,8 @@ def load(path):
     return Settings(tuple(providers), general.get("tty", "/dev/tty1"),
                     general.get("display_cec", "0").lower() in ("1", "true", "yes"),
                     general.get("confirm_key", "SPACE").upper(), general.get("up_key", "UP").upper(),
-                    general.get("down_key", "DOWN").upper(), volume)
+                    general.get("down_key", "DOWN").upper(), volume,
+                    general.get("last_selected_item", ""))
 
 
 def save_launcher_value(path, key, value):
