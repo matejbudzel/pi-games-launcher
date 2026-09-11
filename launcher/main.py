@@ -226,20 +226,23 @@ def main(argv=None):
                 terminal.splash()
                 games, problems = initial_catalog.result()
             while True:
-                entries = [("game", game.title, game) for game in games]
+                regular_games = [game for game in games if not game.testing_tool]
+                testing_games = [game for game in games if game.testing_tool]
+                entries = [("game", game.title, game) for game in regular_games]
+                entries += [("testing", game.title, game) for game in testing_games]
                 entries += [("video", "Test obrazu framebufferu", smoke.framebuffer), ("audio", "Test HDMI zvuku", smoke.audio), ("shutdown", "Koniec", None)]
                 selected %= len(entries)
                 while True:
                     if redraw:
                         suffix = " (displej nie je dostupný)" if not display.available() else ""
-                        lines = [(title, index == selected, kind != "game") for index, (kind, title, _) in enumerate(entries[:len(games)])]
-                        if games:
+                        lines = [(title, index == selected, False) for index, (_, title, _) in enumerate(entries[:len(regular_games)])]
+                        if regular_games:
                             lines.append(("", False))
-                        lines += [(title, index + len(games) == selected, True) for index, (_, title, _) in enumerate(entries[len(games):2 + len(games)])]
+                        lines += [(title, index + len(regular_games) == selected, True) for index, (_, title, _) in enumerate(entries[len(regular_games):-1])]
                         lines.append(("", False))
                         kind, title, _ = entries[-1]
                         lines.append((title, selected == len(entries) - 1, True))
-                        if not games:
+                        if not regular_games:
                             lines.insert(0, ("Žiadne hry nie sú dostupné", False, True))
                         lines += [("", False), ("SPACE / START - vybrať" + suffix, False)]
                         terminal.draw(lines, volume_status(volume), network)

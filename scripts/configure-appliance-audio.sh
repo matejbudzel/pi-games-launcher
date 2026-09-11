@@ -1,6 +1,7 @@
 #!/bin/sh
 set -eu
-printf 'snd_bcm2835\n' > /etc/modules-load.d/pi-games-launcher-audio.conf
+printf '%s\n' bcm2835-codec snd_bcm2835 > /etc/modules-load.d/pi-games-launcher-audio.conf
+modprobe bcm2835-codec || true
 modprobe snd_bcm2835 || true
 card=$(awk -F'[][]' '/bcm2835 HDMI/ { gsub(/[[:space:]]/, "", $2); print $2; exit }' /proc/asound/cards 2>/dev/null || true)
 if [ -z "$card" ]; then

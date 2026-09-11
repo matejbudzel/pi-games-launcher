@@ -6,6 +6,8 @@ Before=getty@tty1.service
 [Service]
 Type=simple
 User=@USER@
+ExecStartPre=+/sbin/modprobe bcm2835-codec
+ExecStartPre=+/sbin/modprobe snd_bcm2835
 WorkingDirectory=@REPO@
 Environment=HOME=@HOME@
 Environment=TERM=linux

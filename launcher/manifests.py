@@ -14,6 +14,7 @@ class Game:
     id: str
     title: str
     command: tuple
+    testing_tool: bool = False
 
     @property
     def key(self):
@@ -35,13 +36,16 @@ def parse(provider_id, text):
         if not isinstance(item, dict):
             raise ValueError("game entry must be an object")
         game_id, title, command = item.get("id"), item.get("title"), item.get("command")
+        testing_tool = item.get("testing_tool", False)
         if not isinstance(game_id, str) or not game_id or not isinstance(title, str) or not title:
             raise ValueError("game id and title must be non-empty strings")
         if game_id in ids:
             raise ValueError("duplicate game id: %s" % game_id)
         if not isinstance(command, list) or not command or not all(isinstance(arg, str) and arg for arg in command):
             raise ValueError("game command must be a non-empty string array")
-        ids.add(game_id); games.append(Game(provider_id, game_id, title, tuple(command)))
+        if not isinstance(testing_tool, bool):
+            raise ValueError("testing_tool must be a boolean")
+        ids.add(game_id); games.append(Game(provider_id, game_id, title, tuple(command), testing_tool))
     return games
 
 

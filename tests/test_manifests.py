@@ -18,6 +18,11 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(games, []); self.assertEqual(len(problems), 1)
     def test_bad_command_is_rejected(self):
         with self.assertRaises(ValueError): parse("x", '{"version":1,"games":[{"id":"x","title":"X","command":[]}]}')
+    def test_testing_tool_is_optional_boolean(self):
+        game = parse("x", '{"version":1,"games":[{"id":"x","title":"X","command":["x"],"testing_tool":true}]}')[0]
+        self.assertTrue(game.testing_tool)
+        with self.assertRaises(ValueError):
+            parse("x", '{"version":1,"games":[{"id":"x","title":"X","command":["x"],"testing_tool":"yes"}]}')
 
 class ConfigTests(unittest.TestCase):
     def test_config_reads_multiple_providers(self):
