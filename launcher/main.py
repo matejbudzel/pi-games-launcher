@@ -213,6 +213,9 @@ def main(argv=None):
     selected = 0
     selected_key = ""
     saved_selected_key = ""
+    tools_open = False
+    tool_selected = 0
+    tool_selected_key = ""
     redraw = True
     network = ""
     display = Display()
@@ -239,27 +242,42 @@ def main(argv=None):
                 regular_games = [game for game in games if not game.testing_tool]
                 testing_games = [game for game in games if game.testing_tool]
                 entries = [("game", game.title, game) for game in regular_games]
-                entries += [("testing", game.title, game) for game in testing_games]
-                entries += [("video", "Test obrazu framebufferu", smoke.framebuffer), ("audio", "Test HDMI zvuku", smoke.audio), ("shutdown", "Koniec", None)]
+                entries += [("tools", "Nástroje", None), ("shutdown", "Koniec", None)]
+                tools = [("testing", game.title, game) for game in testing_games]
+                tools += [("video", "Test obrazu framebufferu", smoke.framebuffer),
+                          ("audio", "Test HDMI zvuku", smoke.audio)]
+                # Older versions stored a tool itself as the main-menu choice.
+                if selected_key in {entry_key(kind, value) for kind, _, value in tools}:
+                    selected_key = "tools"
                 selected = next((index for index, (kind, _, value) in enumerate(entries)
                                  if entry_key(kind, value) == selected_key), 0)
                 selected_key = entry_key(entries[selected][0], entries[selected][2])
+                tool_selected = next((index for index, (kind, _, value) in enumerate(tools)
+                                      if entry_key(kind, value) == tool_selected_key), 0)
+                tool_selected_key = entry_key(tools[tool_selected][0], tools[tool_selected][2])
                 if selected_key != saved_selected_key:
                     save_launcher_value(args.config, "last_selected_item", selected_key)
                     saved_selected_key = selected_key
                 while True:
                     if redraw:
                         suffix = " (displej nie je dostupný)" if not display.available() else ""
-                        lines = [(title, index == selected, False) for index, (_, title, _) in enumerate(entries[:len(regular_games)])]
-                        if regular_games:
+                        if tools_open:
+                            lines = [("╔══════ Nástroje ══════╗", False, True), ("", False)]
+                            lines += [(title, index == tool_selected, False) for index, (_, title, _) in enumerate(tools)]
+                            lines += [("", False), ("ESC / SELECT - späť" + suffix, False, True),
+                                      ("╚══════════════════════╝", False, True)]
+                        else:
+                            lines = [(title, index == selected, False) for index, (_, title, _) in enumerate(entries[:len(regular_games)])]
+                            if regular_games:
+                                lines.append(("", False))
+                            lines += [(title, index + len(regular_games) == selected, True)
+                                      for index, (_, title, _) in enumerate(entries[len(regular_games):-1])]
                             lines.append(("", False))
-                        lines += [(title, index + len(regular_games) == selected, True) for index, (_, title, _) in enumerate(entries[len(regular_games):-1])]
-                        lines.append(("", False))
-                        kind, title, _ = entries[-1]
-                        lines.append((title, selected == len(entries) - 1, True))
-                        if not regular_games:
-                            lines.insert(0, ("Žiadne hry nie sú dostupné", False, True))
-                        lines += [("", False), ("SPACE / START - vybrať" + suffix, False)]
+                            kind, title, _ = entries[-1]
+                            lines.append((title, selected == len(entries) - 1, True))
+                            if not regular_games:
+                                lines.insert(0, ("Žiadne hry nie sú dostupné", False, True))
+                            lines += [("", False), ("SPACE / START - vybrať" + suffix, False)]
                         terminal.draw(lines, volume_status(volume), network)
                         redraw = False
                     key = next_input(terminal, pad)
@@ -270,6 +288,10 @@ def main(argv=None):
                         notify(settings.providers, "display-on" if now_display else "display-off"); previous_display = now_display; redraw = True
                     if key is None: continue
                     if key == "CTRL_C": return MAINTENANCE_EXIT
+                    if tools_open and key in ("ESC", "SELECT"):
+                        tools_open = False
+                        redraw = True
+                        continue
                     if key == "F1": network = network_address(); redraw = True
                     elif key in ("LEFT", "RIGHT"):
                         changed = max(0, min(100, volume + (10 if key == "RIGHT" else -10)))
@@ -278,14 +300,23 @@ def main(argv=None):
                             save_launcher_value(args.config, "audio_volume_percent", volume)
                             redraw = True
                     elif key in (settings.up_key, settings.down_key):
-                        selected = (selected + (-1 if key == settings.up_key else 1)) % len(entries)
-                        selected_key = entry_key(entries[selected][0], entries[selected][2])
-                        if selected_key != saved_selected_key:
-                            save_launcher_value(args.config, "last_selected_item", selected_key)
-                            saved_selected_key = selected_key
+                        offset = -1 if key == settings.up_key else 1
+                        if tools_open:
+                            tool_selected = (tool_selected + offset) % len(tools)
+                            tool_selected_key = entry_key(tools[tool_selected][0], tools[tool_selected][2])
+                        else:
+                            selected = (selected + offset) % len(entries)
+                            selected_key = entry_key(entries[selected][0], entries[selected][2])
+                            if selected_key != saved_selected_key:
+                                save_launcher_value(args.config, "last_selected_item", selected_key)
+                                saved_selected_key = selected_key
                         redraw = True
                     elif key in (settings.confirm_key, "START", "ENTER"):
-                        kind, _, value = entries[selected]
+                        kind, _, value = tools[tool_selected] if tools_open else entries[selected]
+                        if kind == "tools":
+                            tools_open = True
+                            redraw = True
+                            continue
                         if kind == "shutdown":
                             confirmed = confirm_shutdown(terminal, pad, settings.confirm_key)
                             if confirmed is None:
