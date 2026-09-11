@@ -23,6 +23,10 @@ class ApplianceTests(unittest.TestCase):
         self.assertIn('pcm.!default {', source)
         self.assertIn('slave.pcm \\"hw:$card,0\\"', source)
 
+    def test_guest_handoff_inherits_the_appliance_sdl_workaround(self):
+        service = (ROOT / "systemd" / "pi-games-launcher.service.in").read_text()
+        self.assertIn("Environment=SDL_FB_BROKEN_MODES=1", service)
+
     def test_menu_has_diagnostics_shutdown_and_ctrl_c_escape(self):
         source = (ROOT / "launcher" / "main.py").read_text()
         for item in ("Test obrazu framebufferu", "Test HDMI zvuku", '"Koniec"', 'key == "CTRL_C"', "confirm_shutdown"):

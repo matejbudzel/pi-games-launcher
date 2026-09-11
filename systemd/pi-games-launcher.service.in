@@ -11,6 +11,9 @@ ExecStartPre=+/sbin/modprobe snd_bcm2835
 WorkingDirectory=@REPO@
 Environment=HOME=@HOME@
 Environment=TERM=linux
+# Every provider guest inherits the proven SDL 1.2 fbcon workaround from the
+# appliance owner.  Individual providers must not configure framebuffer modes.
+Environment=SDL_FB_BROKEN_MODES=1
 StandardInput=tty
 StandardOutput=tty
 StandardError=journal
