@@ -22,6 +22,7 @@ class Settings:
     down_key: str = "DOWN"
     audio_volume_percent: int = 96
     last_selected_item: str = ""
+    web_dancemat_port: int = 8080
 
 
 def _command(value, section, key):
@@ -61,11 +62,15 @@ def load(path):
         volume = max(0, min(100, int(general.get("audio_volume_percent", "96"))))
     except ValueError:
         volume = 96
+    try:
+        web_dancemat_port = max(0, min(65535, int(general.get("web_dancemat_port", "8080"))))
+    except ValueError:
+        web_dancemat_port = 8080
     return Settings(tuple(providers), general.get("tty", "/dev/tty1"),
                     general.get("display_cec", "0").lower() in ("1", "true", "yes"),
                     general.get("confirm_key", "SPACE").upper(), general.get("up_key", "UP").upper(),
                     general.get("down_key", "DOWN").upper(), volume,
-                    general.get("last_selected_item", ""))
+                    general.get("last_selected_item", ""), web_dancemat_port)
 
 
 def save_launcher_value(path, key, value):

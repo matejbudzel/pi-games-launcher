@@ -13,6 +13,8 @@ down_key=DOWN
 audio_volume_percent=96
 # The launcher restores this item after a restart or manifest refresh.
 last_selected_item=
+# Local-network virtual dance mat. Set 0 to disable it.
+web_dancemat_port=8080
 
 # Commands use shell-style quoting but are executed directly, without a shell.
 [provider dos]

@@ -52,3 +52,10 @@ class ConfigTests(unittest.TestCase):
             path.write_text("[launcher]\n\n[provider test]\nmanifest_command=test\n")
             save_launcher_value(path, "last_selected_item", "dos:prince-of-persia")
             self.assertEqual(load(path).last_selected_item, "dos:prince-of-persia")
+    def test_web_dance_mat_port_reads_from_launcher_section(self):
+        from pathlib import Path
+        from tempfile import TemporaryDirectory
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "launcher.conf"
+            path.write_text("[launcher]\nweb_dancemat_port=9090\n")
+            self.assertEqual(load(path).web_dancemat_port, 9090)

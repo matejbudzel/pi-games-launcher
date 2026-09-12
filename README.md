@@ -28,6 +28,8 @@ The installer disables and removes the old `pi-286-games` service units and sudo
 
 Run `scripts/set-framebuffer-profile.sh {640x480|854x480|720p} [--reboot]` on the Pi to select a legacy HDMI/framebuffer profile. The custom 854×480 profile uses DMT mode 87 and its CVT timing; the target display must support it.
 
+The launcher also serves an unauthenticated local-network virtual dance mat on TCP port 8080 by default. It provides eight directions plus `START` and `SELECT`, and accepts input only while the launcher menu is visible. Set `web_dancemat_port=0` in `[launcher]` to disable it.
+
 ## SDL build and release
 
 SDL 1.2 fbcon source, patches, scripts, and host-local ARMv6 cache belong here exclusively. Build/release work is deliberately local—never GitHub Actions—because it synchronizes headers and runtime libraries from the real Pi:
