@@ -111,9 +111,10 @@ class Terminal:
         for line in lines:
             text, selected = line[:2]
             dim = len(line) > 2 and line[2]
+            accent = len(line) > 3 and line[3]
             prefix, suffix = ("> ", " <") if selected else ("", "")
             text = text[:max(0, size.columns - len(prefix) - len(suffix))]
-            tone = highlight_color(text) if selected else "\x1b[2;37m" if dim else "\x1b[37m"
+            tone = highlight_color(text) if selected else "\x1b[2;36m" if accent == "cyan" else "\x1b[2;37m" if dim else "\x1b[37m"
             out.append(tone + " " * max(0, (size.columns-len(text)-len(prefix)-len(suffix)) // 2) + prefix + text + suffix + "\x1b[0m\r\n")
         if top_corner:
             out.append("\x1b[1;%dH\x1b[2;37m%s\x1b[0m" % (max(1, size.columns - len(top_corner) + 1), top_corner[:size.columns]))
@@ -186,7 +187,7 @@ def confirm_shutdown(terminal, pad, confirm_key):
     terminal.draw([
         ("Naozaj chceš vypnúť Raspberry Pi?", True),
         ("", False),
-        ("%s / START - vypnúť" % confirm_key, False),
+        ("%s / START - vypnúť" % confirm_key, False, True, "cyan"),
         ("ESC / SELECT - späť", False, True),
     ])
     while True:
@@ -329,6 +330,7 @@ def main(argv=None):
                                 redraw = True
                                 continue
                             try:
+                                terminal.draw([("Vypínam…", True)])
                                 if not subprocess.run(["sudo", "-n", "/sbin/shutdown", "-h", "now"]).returncode:
                                     return 0
                             except OSError as error:

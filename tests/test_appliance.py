@@ -29,7 +29,7 @@ class ApplianceTests(unittest.TestCase):
 
     def test_menu_has_diagnostics_shutdown_and_ctrl_c_escape(self):
         source = (ROOT / "launcher" / "main.py").read_text()
-        for item in ("Test obrazu framebufferu", "Test HDMI zvuku", '"Koniec"', 'key == "CTRL_C"', "confirm_shutdown"):
+        for item in ("Test obrazu framebufferu", "Test HDMI zvuku", '"Koniec"', 'key == "CTRL_C"', "confirm_shutdown", "Vypínam…", 'accent == "cyan"'):
             self.assertIn(item, source)
 
     def test_provider_problems_stay_out_of_the_menu_and_logs_use_journal(self):
