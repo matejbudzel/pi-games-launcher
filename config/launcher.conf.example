@@ -5,6 +5,7 @@ framebuffer_height=720
 framebuffer_depth=16
 framebuffer_hdmi_group=1
 framebuffer_hdmi_mode=4
+# Custom mode 87 example: framebuffer_hdmi_cvt=854 480 60 3 0 0 0
 confirm_key=SPACE
 up_key=UP
 down_key=DOWN

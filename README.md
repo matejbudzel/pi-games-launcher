@@ -26,6 +26,8 @@ The installer disables and removes the old `pi-286-games` service units and sudo
 
 `tvservice` is queried best-effort before menu rendering when present; unknown probes do not stop the launcher. Provider hooks can be configured as `hook_input_added`, `hook_input_removed`, `hook_display_on`, or `hook_display_off`; they are reserved optional notifications and hook failures never affect launcher operation.
 
+Run `scripts/set-framebuffer-profile.sh {640x480|854x480|720p} [--reboot]` on the Pi to select a legacy HDMI/framebuffer profile. The custom 854×480 profile uses DMT mode 87 and its CVT timing; the target display must support it.
+
 ## SDL build and release
 
 SDL 1.2 fbcon source, patches, scripts, and host-local ARMv6 cache belong here exclusively. Build/release work is deliberately local—never GitHub Actions—because it synchronizes headers and runtime libraries from the real Pi:

@@ -62,3 +62,11 @@ class ApplianceTests(unittest.TestCase):
         source = (ROOT / "launcher" / "main.py").read_text()
         for item in ('b"\\x1bOQ":"F2"', 'elif key == "F2":', "Obnovujem obsah…", "F2 - obnoviť"):
             self.assertIn(item, source)
+
+    def test_framebuffer_profiles_include_the_custom_854x480_timing(self):
+        profile = (ROOT / "scripts" / "set-framebuffer-profile.sh").read_text()
+        framebuffer = (ROOT / "scripts" / "configure-legacy-framebuffer.sh").read_text()
+        for item in ("640x480|854x480|720p", "framebuffer_hdmi_mode 87", "854 480 60 3 0 0 0"):
+            self.assertIn(item, profile)
+        for item in ("echo 'hdmi_drive=2'", 'echo "hdmi_cvt=$cvt"'):
+            self.assertIn(item, framebuffer)
