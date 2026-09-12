@@ -104,7 +104,7 @@ class Terminal:
     def key(self, timeout=.1):
         if not select.select([self.fd], [], [], timeout)[0]: return None
         data = os.read(self.fd, 8)
-        return {b"\x03":"CTRL_C", b"\x1b":"ESC", b"\x1b[A":"UP", b"\x1bOA":"UP", b"\x1b[B":"DOWN", b"\x1bOB":"DOWN", b"\x1b[C":"RIGHT", b"\x1bOC":"RIGHT", b"\x1b[D":"LEFT", b"\x1bOD":"LEFT", b"\x1bOP":"F1", b" ":"SPACE", b"\r":"ENTER"}.get(data, data.decode("utf-8", "ignore").upper())
+        return {b"\x03":"CTRL_C", b"\x1b":"ESC", b"\x1b[A":"UP", b"\x1bOA":"UP", b"\x1b[B":"DOWN", b"\x1bOB":"DOWN", b"\x1b[C":"RIGHT", b"\x1bOC":"RIGHT", b"\x1b[D":"LEFT", b"\x1bOD":"LEFT", b"\x1bOP":"F1", b"\x1bOQ":"F2", b"\x1b[12~":"F2", b" ":"SPACE", b"\r":"ENTER"}.get(data, data.decode("utf-8", "ignore").upper())
     def draw(self, lines, top_corner="", bottom_corner=""):
         size = os.get_terminal_size(sys.stdout.fileno())
         out = ["\x1b[2J\x1b[H", "\r\n" * max(0, (size.lines - len(lines)) // 2)]
@@ -264,7 +264,7 @@ def main(argv=None):
                         if tools_open:
                             lines = [("╔══════ Nástroje ══════╗", False, True), ("", False)]
                             lines += [(title, index == tool_selected, False) for index, (_, title, _) in enumerate(tools)]
-                            lines += [("", False), ("ESC / SELECT - späť" + suffix, False, True),
+                            lines += [("", False), ("F2 - obnoviť | ESC / SELECT - späť" + suffix, False, True),
                                       ("╚══════════════════════╝", False, True)]
                         else:
                             lines = [(title, index == selected, False) for index, (_, title, _) in enumerate(entries[:len(regular_games)])]
@@ -277,7 +277,7 @@ def main(argv=None):
                             lines.append((title, selected == len(entries) - 1, True))
                             if not regular_games:
                                 lines.insert(0, ("Žiadne hry nie sú dostupné", False, True))
-                            lines += [("", False), ("SPACE / START - vybrať" + suffix, False)]
+                            lines += [("", False), ("SPACE / START - vybrať | F2 - obnoviť" + suffix, False)]
                         terminal.draw(lines, volume_status(volume), network)
                         redraw = False
                     key = next_input(terminal, pad)
@@ -293,6 +293,10 @@ def main(argv=None):
                         redraw = True
                         continue
                     if key == "F1": network = network_address(); redraw = True
+                    elif key == "F2":
+                        terminal.draw([("Obnovujem obsah…", True)])
+                        redraw = True
+                        break
                     elif key in ("LEFT", "RIGHT"):
                         changed = max(0, min(100, volume + (10 if key == "RIGHT" else -10)))
                         if changed != volume and set_audio_volume(changed):

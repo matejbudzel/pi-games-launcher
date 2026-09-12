@@ -57,3 +57,8 @@ class ApplianceTests(unittest.TestCase):
         source = (ROOT / "launcher" / "main.py").read_text()
         for item in ("volume_status(volume)", 'key in ("LEFT", "RIGHT")', "save_launcher_value", 'key == "F1"', "network_address()"):
             self.assertIn(item, source)
+
+    def test_f2_refreshes_provider_content_from_both_menus(self):
+        source = (ROOT / "launcher" / "main.py").read_text()
+        for item in ('b"\\x1bOQ":"F2"', 'elif key == "F2":', "Obnovujem obsah…", "F2 - obnoviť"):
+            self.assertIn(item, source)

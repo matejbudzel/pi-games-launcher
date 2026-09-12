@@ -10,7 +10,7 @@ Each `[provider ID]` section supplies a `manifest_command`. It must print exactl
 {"version":1,"games":[{"id":"provider-specific-id","title":"Prince of Persia","command":["/path/to/provider","run","provider-specific-id"]}]}
 ```
 
-IDs are unique only within their provider; the launcher namespaces them internally. A bad command, failed command, or malformed document is logged and isolated. All manifests are refreshed at startup and after every guest exits.
+IDs are unique only within their provider; the launcher namespaces them internally. A bad command, failed command, or malformed document is logged and isolated. All manifests are refreshed at startup, after every guest exits, and on F2 from either menu.
 
 ## Ownership and handoff
 
