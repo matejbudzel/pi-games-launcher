@@ -27,6 +27,11 @@ class ApplianceTests(unittest.TestCase):
         service = (ROOT / "systemd" / "pi-games-launcher.service.in").read_text()
         self.assertIn("Environment=SDL_FB_BROKEN_MODES=1", service)
 
+    def test_virtual_dance_mat_has_uinput_access(self):
+        service = (ROOT / "systemd" / "pi-games-launcher.service.in").read_text()
+        for item in ("modprobe uinput", "chgrp input /dev/uinput", "chmod 0660 /dev/uinput"):
+            self.assertIn(item, service)
+
     def test_menu_has_diagnostics_shutdown_and_ctrl_c_escape(self):
         source = (ROOT / "launcher" / "main.py").read_text()
         for item in ("Test obrazu framebufferu", "Test HDMI zvuku", '"Koniec"', 'key == "CTRL_C"', "confirm_shutdown", "Vypínam…", 'accent == "cyan"'):

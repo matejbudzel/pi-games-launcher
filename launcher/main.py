@@ -138,22 +138,18 @@ class Terminal:
         while time.monotonic() < deadline:
             self.key(min(.1, deadline - time.monotonic()))
 
-def next_input(term, pad, webmat=None):
+def next_input(term, pad):
     key = term.key()
     if key: return key
-    if webmat:
-        key = webmat.action()
-        if key: return key
     for button in pad.buttons():
         if button in PAD_ACTIONS: return PAD_ACTIONS[button]
     return None
 
 
-def run_smoke_test(test, terminal, pad, webmat):
+def run_smoke_test(test, terminal, pad):
     """Give a diagnostic exclusive console/input ownership like a guest."""
     try:
         pad.close()
-        webmat.set_active(False)
         terminal.deactivate()
         restore_console()
         test()
@@ -164,7 +160,6 @@ def run_smoke_test(test, terminal, pad, webmat):
     finally:
         terminal.activate()
         pad.open()
-        webmat.set_active(True)
 
 
 def wait_for_config(terminal, path):
@@ -189,7 +184,7 @@ def wait_for_config(terminal, path):
                 return None
 
 
-def confirm_shutdown(terminal, pad, webmat, confirm_key):
+def confirm_shutdown(terminal, pad, confirm_key):
     terminal.draw([
         ("Naozaj chceš vypnúť Raspberry Pi?", True),
         ("", False),
@@ -197,7 +192,7 @@ def confirm_shutdown(terminal, pad, webmat, confirm_key):
         ("ESC / SELECT - späť", False, True),
     ])
     while True:
-        key = next_input(terminal, pad, webmat)
+        key = next_input(terminal, pad)
         if key == "CTRL_C":
             return None
         if key in (confirm_key, "START", "ENTER"):
@@ -236,12 +231,14 @@ def main(argv=None):
         if not set_audio_volume(volume):
             LOG.warning("could not set HDMI PCM volume")
         pad = DancePad().open()
-        webmat = VirtualDanceMat(settings.web_dancemat_port)
-        try:
-            port = webmat.open()
-            LOG.info("virtual dance mat available on TCP port %d", port)
-        except OSError as error:
-            LOG.warning("could not start virtual dance mat: %s", error)
+        webmat = None
+        if settings.web_dancemat_port:
+            webmat = VirtualDanceMat(settings.web_dancemat_port)
+            try:
+                port = webmat.open()
+                LOG.info("virtual dance mat available on TCP port %d", port)
+            except OSError as error:
+                LOG.warning("could not start virtual dance mat: %s", error)
         previous_pad, previous_display = pad.available, display.available()
         notify(settings.providers, "input-added" if previous_pad else "input-removed")
         notify(settings.providers, "display-on" if previous_display else "display-off")
@@ -251,7 +248,6 @@ def main(argv=None):
                 initial_catalog = executor.submit(collect, settings.providers)
                 terminal.splash()
                 games, problems = initial_catalog.result()
-            webmat.set_active(True)
             while True:
                 regular_games = [game for game in games if not game.testing_tool]
                 testing_games = [game for game in games if game.testing_tool]
@@ -294,7 +290,7 @@ def main(argv=None):
                             lines += [("", False), ("SPACE / START - vybrať | F2 - obnoviť" + suffix, False)]
                         terminal.draw(lines, volume_status(volume), network)
                         redraw = False
-                    key = next_input(terminal, pad, webmat)
+                    key = next_input(terminal, pad)
                     now_pad, now_display = pad.available, display.available()
                     if now_pad != previous_pad:
                         notify(settings.providers, "input-added" if now_pad else "input-removed"); previous_pad = now_pad
@@ -336,7 +332,7 @@ def main(argv=None):
                             redraw = True
                             continue
                         if kind == "shutdown":
-                            confirmed = confirm_shutdown(terminal, pad, webmat, settings.confirm_key)
+                            confirmed = confirm_shutdown(terminal, pad, settings.confirm_key)
                             if confirmed is None:
                                 return MAINTENANCE_EXIT
                             if not confirmed:
@@ -351,7 +347,7 @@ def main(argv=None):
                             redraw = True
                             continue
                         if kind in ("video", "audio"):
-                            run_smoke_test(value, terminal, pad, webmat)
+                            run_smoke_test(value, terminal, pad)
                             redraw = True
                             continue
                         game = value
@@ -359,8 +355,6 @@ def main(argv=None):
                         def reacquire():
                             terminal.activate()
                             pad.open()
-                            webmat.set_active(True)
-                        webmat.set_active(False)
                         code = run(game.command, terminal, pad.close, reacquire)
                         if code:
                             LOG.warning("guest %s exited with status %d", game.key, code)
@@ -368,7 +362,7 @@ def main(argv=None):
                         break # Refresh all provider manifests after every guest.
                 games, problems = collect(settings.providers)
         finally:
-            webmat.close()
+            if webmat: webmat.close()
             pad.close()
 
 if __name__ == "__main__": raise SystemExit(main())

@@ -16,7 +16,7 @@ def known_dance_pad(name, axes, buttons):
 
 
 class DancePad:
-    def __init__(self): self.devices, self.next_scan = {}, 0
+    def __init__(self): self.devices, self.next_scan, self.pending = {}, 0, []
     def open(self): self.scan(); return self
     def close(self):
         for fd in self.devices.values():
@@ -42,7 +42,7 @@ class DancePad:
                 if fd is not None: os.close(fd)
         self.next_scan = time.monotonic() + 2
     def buttons(self):
-        pressed = []
+        if self.pending: return [self.pending.pop(0)]
         for path, fd in list(self.devices.items()):
             try: raw = os.read(fd, JS_EVENT.size * 32)
             except BlockingIOError: continue
@@ -52,6 +52,6 @@ class DancePad:
                 except OSError: pass
                 del self.devices[path]; continue
             for _, value, kind, number in JS_EVENT.iter_unpack(raw):
-                if kind == 1 and value == 1: pressed.append(number)
+                if kind == 1 and value == 1: self.pending.append(number)
         if time.monotonic() >= self.next_scan: self.scan()
-        return pressed
+        return [self.pending.pop(0)] if self.pending else []
